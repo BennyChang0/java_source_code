@@ -157,9 +157,12 @@ public class ThreadLocal<T> {
      * @return the current thread's value of this thread-local
      */
     public T get() {
+        // TODO 获取当前正在执行的线程对象
         Thread t = Thread.currentThread();
+        // TODO 从线程中获取ThreadLocalMap对象
         ThreadLocalMap map = getMap(t);
         if (map != null) {
+            // TODO this指当前ThreadLocal
             ThreadLocalMap.Entry e = map.getEntry(this);
             if (e != null) {
                 @SuppressWarnings("unchecked")
@@ -198,8 +201,10 @@ public class ThreadLocal<T> {
      */
     public void set(T value) {
         Thread t = Thread.currentThread();
+        // TODO 获取当前线程的ThreadLocalMap对象
         ThreadLocalMap map = getMap(t);
         if (map != null)
+            // TODO key=当前ThreadLocal
             map.set(this, value);
         else
             createMap(t, value);
@@ -241,6 +246,7 @@ public class ThreadLocal<T> {
      * @param firstValue value for the initial entry of the map
      */
     void createMap(Thread t, T firstValue) {
+        // TODO 初始化threadLocalMap对象
         t.threadLocals = new ThreadLocalMap(this, firstValue);
     }
 
