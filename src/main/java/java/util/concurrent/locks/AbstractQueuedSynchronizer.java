@@ -397,6 +397,7 @@ public abstract class AbstractQueuedSynchronizer
 
         /**
          * Status field, taking on only the values:
+         *  // TODO 当前node获得锁，在它释放锁或者取消的时候，需要unpark后续节点
          *   SIGNAL:     The successor of this node is (or will soon be)
          *               blocked (via park), so the current node must
          *               unpark its successor when it releases or
@@ -404,20 +405,24 @@ public abstract class AbstractQueuedSynchronizer
          *               first indicate they need a signal,
          *               then retry the atomic acquire, and then,
          *               on failure, block.
+         *  // TODO 该节点因为超时或者中断而取消,处于取消状态的node不再会阻塞(不需要被标记signal)
          *   CANCELLED:  This node is cancelled due to timeout or interrupt.
          *               Nodes never leave this state. In particular,
          *               a thread with cancelled node never again blocks.
+         *  // TODO 该节点在条件队列,除非状态变化了(waitStatus=0)，否则节点不会被用作同步队列的节点
          *   CONDITION:  This node is currently on a condition queue.
          *               It will not be used as a sync queue node
          *               until transferred, at which time the status
          *               will be set to 0. (Use of this value here has
          *               nothing to do with the other uses of the
          *               field, but simplifies mechanics.)
+         *  // TODO shared model 共享模式下的状态, 只会给head node，用于继续传播
          *   PROPAGATE:  A releaseShared should be propagated to other
          *               nodes. This is set (for head node only) in
          *               doReleaseShared to ensure propagation
          *               continues, even if other operations have
          *               since intervened.
+         *  // TODO 初始状态,等待获取锁
          *   0:          None of the above
          *
          * The values are arranged numerically to simplify use.
@@ -602,17 +607,20 @@ public abstract class AbstractQueuedSynchronizer
      * @param mode Node.EXCLUSIVE for exclusive, Node.SHARED for shared
      * @return the new node
      */
+    // TODO 添加一个node到等待队列的tail
     private Node addWaiter(Node mode) {
         Node node = new Node(Thread.currentThread(), mode);
         // Try the fast path of enq; backup to full enq on failure
         Node pred = tail;
         if (pred != null) {
             node.prev = pred;
+            // TODO 设置tailOffset
             if (compareAndSetTail(pred, node)) {
                 pred.next = node;
                 return node;
             }
         }
+        // TODO 如果设置添加到tail失败，则死循环添加入队列
         enq(node);
         return node;
     }
@@ -624,6 +632,7 @@ public abstract class AbstractQueuedSynchronizer
      *
      * @param node the node
      */
+    // TODO head节点没有线程，并且前一个节点是null
     private void setHead(Node node) {
         head = node;
         node.thread = null;
@@ -652,12 +661,15 @@ public abstract class AbstractQueuedSynchronizer
          * non-cancelled successor.
          */
         Node s = node.next;
+        // TODO 如果下一节点是null或者已经被取消
         if (s == null || s.waitStatus > 0) {
             s = null;
+            // TODO 从tail开始向前遍历,找到一个没有被取消的node
             for (Node t = tail; t != null && t != node; t = t.prev)
                 if (t.waitStatus <= 0)
                     s = t;
         }
+        // TODO unpark找到的node
         if (s != null)
             LockSupport.unpark(s.thread);
     }
@@ -667,6 +679,7 @@ public abstract class AbstractQueuedSynchronizer
      * propagation. (Note: For exclusive mode, release just amounts
      * to calling unparkSuccessor of head if it needs signal.)
      */
+    // TODO shared model 共享模式下释放锁，signal后续节点并且确保传播；如果是独占模式下则只unpark head 不会传播到后续节点
     private void doReleaseShared() {
         /*
          * Ensure that a release propagates, even if there are other
@@ -683,7 +696,9 @@ public abstract class AbstractQueuedSynchronizer
             Node h = head;
             if (h != null && h != tail) {
                 int ws = h.waitStatus;
+                // TODO 已经获得锁
                 if (ws == Node.SIGNAL) {
+                    // TODO 将节点waitStatus设置为0
                     if (!compareAndSetWaitStatus(h, Node.SIGNAL, 0))
                         continue;            // loop to recheck cases
                     unparkSuccessor(h);
