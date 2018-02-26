@@ -343,14 +343,18 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * reported as the current size of the workers set.
      *
      * The runState provides the main lifecycle control, taking on values:
-     *
+     * //TODO 接收新任务并且处理队列中的任务
      *   RUNNING:  Accept new tasks and process queued tasks
+     * //TODO 不接收新任务，但是处理队列中的任务
      *   SHUTDOWN: Don't accept new tasks, but process queued tasks
+     * //TODO 不接收新任务，不处理队列中的任务，并且中断处理中的任务
      *   STOP:     Don't accept new tasks, don't process queued tasks,
      *             and interrupt in-progress tasks
+     * //TODO 所有任务已经终止，工作线程数为0，将要运行terminated()钩子方法
      *   TIDYING:  All tasks have terminated, workerCount is zero,
      *             the thread transitioning to state TIDYING
      *             will run the terminated() hook method
+     * //TODO terminated()终止方法已经完成,默认无实现
      *   TERMINATED: terminated() has completed
      *
      * The numerical order among these values matters, to allow
@@ -480,7 +484,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * Set containing all worker threads in pool. Accessed only when
      * holding mainLock.
      */
-    // TODO 存放worker的set集合，必须持有mainLock才能访问
+    // TODO 存放工作线程的set集合，必须持有mainLock才能访问
     private final HashSet<Worker> workers = new HashSet<>();
 
     /**
@@ -562,6 +566,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
     /**
      * The default rejected execution handler
      */
+    // TODO 默认的拒绝策略, 忽略并抛出异常
     private static final RejectedExecutionHandler defaultHandler =
         new AbortPolicy();
 
@@ -643,7 +648,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         //
         // The value 0 represents the unlocked state.
         // The value 1 represents the locked state.
-
+        // TODO 0 是未锁定，1 是锁定
         protected boolean isHeldExclusively() {
             return getState() != 0;
         }
@@ -914,10 +919,13 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * state).
      * @return true if successful
      */
+    // TODO 是否能将任务添加到线程池中，边界判断core如果为true则比较corePoolSize，false则比较maximumPoolSize
     private boolean addWorker(Runnable firstTask, boolean core) {
         retry:
         for (;;) {
+            // TODO 线程数量
             int c = ctl.get();
+            // TODO 线程池运行状态
             int rs = runStateOf(c);
 
             // Check if queue empty only if necessary.
@@ -928,16 +936,21 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
                 return false;
 
             for (;;) {
+                // TODO workerCount工作线程数量
                 int wc = workerCountOf(c);
+                // TODO 如果工作线程数量已经达到最大容量或者是超过 corePoolSize or maximumPoolSize，则退出
                 if (wc >= CAPACITY ||
                     wc >= (core ? corePoolSize : maximumPoolSize))
                     return false;
+                // TODO CAS修改ctl,如果修改成功则退出最外层循环
                 if (compareAndIncrementWorkerCount(c))
                     break retry;
                 c = ctl.get();  // Re-read ctl
+                // TODO 如果线程池状态变化了,则重试外层循环
                 if (runStateOf(c) != rs)
                     continue retry;
                 // else CAS failed due to workerCount change; retry inner loop
+                // TODO 如果cas失败是因为工作线程数量变化了，则重试内层循环
             }
         }
 
@@ -945,7 +958,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         boolean workerAdded = false;
         Worker w = null;
         try {
-            // TODO Worker 是 AbstractQueuedSynchronizer 的子类,也是一个线程
+            // TODO Worker 是 AbstractQueuedSynchronizer 的子类,同时也是一个线程
             w = new Worker(firstTask);
             final Thread t = w.thread;
             if (t != null) {
@@ -961,7 +974,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
                         (rs == SHUTDOWN && firstTask == null)) {
                         if (t.isAlive()) // precheck that t is startable
                             throw new IllegalThreadStateException();
-                        // TODO 添加任务
+                        // TODO 添加工作线程
                         workers.add(w);
                         int s = workers.size();
                         if (s > largestPoolSize)
@@ -1371,7 +1384,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
          * workerCount, and so prevents false alarms that would add
          * threads when it shouldn't, by returning false.
          *
-         * // TODO 如果任务成功加入到任务队列
+         * // TODO 如果线程池数量超过corePoolSize的大小,并且任务成功加入到任务队列
          * 2. If a task can be successfully queued, then we still need
          * to double-check whether we should have added a thread
          * (because existing ones died since last checking) or that
@@ -1385,19 +1398,23 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
          * and so reject the task.
          */
         int c = ctl.get();
-        // TODO 如果线程数量还小于核心池的大小
+        // TODO 如果线程数量<corePoolSize
         if (workerCountOf(c) < corePoolSize) {
+            // TODO 添加工作线程是否成功,bound为corePoolSize
             if (addWorker(command, true))
                 return;
             c = ctl.get();
         }
+        // TODO 如果线程数量>=corePoolSize,线程池状态正常并且队列能添加任务成功,offer()非阻塞
         if (isRunning(c) && workQueue.offer(command)) {
             int recheck = ctl.get();
             if (! isRunning(recheck) && remove(command))
                 reject(command);
             else if (workerCountOf(recheck) == 0)
+                // TODO 添加工作线程，bound为maximumPoolSize
                 addWorker(null, false);
         }
+        // TODO 如果线程数量>=maximumPoolSize，则拒绝任务
         else if (!addWorker(command, false))
             reject(command);
     }
