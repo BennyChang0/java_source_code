@@ -397,7 +397,7 @@ public abstract class AbstractQueuedSynchronizer
 
         /**
          * Status field, taking on only the values:
-         *  // TODO 当前node获得锁，在它释放锁或者取消的时候，需要unpark后续节点
+         *  // TODO 表示当前节点的后继节点包含的线程需要运行，也就是unpark
          *   SIGNAL:     The successor of this node is (or will soon be)
          *               blocked (via park), so the current node must
          *               unpark its successor when it releases or
@@ -410,6 +410,7 @@ public abstract class AbstractQueuedSynchronizer
          *               Nodes never leave this state. In particular,
          *               a thread with cancelled node never again blocks.
          *  // TODO 该节点在条件队列,除非状态变化了(waitStatus=0)，否则节点不会被用作同步队列的节点
+         *  // 表示当前节点在等待condition，也就是在condition队列中
          *   CONDITION:  This node is currently on a condition queue.
          *               It will not be used as a sync queue node
          *               until transferred, at which time the status
@@ -607,10 +608,11 @@ public abstract class AbstractQueuedSynchronizer
      * @param mode Node.EXCLUSIVE for exclusive, Node.SHARED for shared
      * @return the new node
      */
-    // TODO 添加一个node到等待队列的tail
+    // TODO 将当前线程包装成Node添加到等待队列的tail
     private Node addWaiter(Node mode) {
         Node node = new Node(Thread.currentThread(), mode);
         // Try the fast path of enq; backup to full enq on failure
+        // TODO 尝试快速添加到tail
         Node pred = tail;
         if (pred != null) {
             node.prev = pred;
@@ -620,7 +622,7 @@ public abstract class AbstractQueuedSynchronizer
                 return node;
             }
         }
-        // TODO 如果设置添加到tail失败，则死循环添加入队列
+        // TODO 如果快速添加到tail失败，则死循环添加入队列
         enq(node);
         return node;
     }
@@ -807,6 +809,7 @@ public abstract class AbstractQueuedSynchronizer
      * @param node the node
      * @return {@code true} if thread should block
      */
+    // TODO 如果true，则需要将线程阻塞
     private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
         int ws = pred.waitStatus;
         if (ws == Node.SIGNAL)
@@ -820,6 +823,7 @@ public abstract class AbstractQueuedSynchronizer
              * Predecessor was cancelled. Skip over predecessors and
              * indicate retry.
              */
+            // TODO 找到一个非取消的前驱节点, pred=head，则前驱节点为tail
             do {
                 node.prev = pred = pred.prev;
             } while (pred.waitStatus > 0);
@@ -875,12 +879,14 @@ public abstract class AbstractQueuedSynchronizer
             boolean interrupted = false;
             for (;;) {
                 final Node p = node.predecessor();
+                // TODO 首节点且获取状态成功,则设定为首节点
                 if (p == head && tryAcquire(arg)) {
                     setHead(node);
                     p.next = null; // help GC
                     failed = false;
                     return interrupted;
                 }
+                // TODO 如果获取失败，判断是否需要park
                 if (shouldParkAfterFailedAcquire(p, node) &&
                     parkAndCheckInterrupt())
                     interrupted = true;
@@ -902,6 +908,7 @@ public abstract class AbstractQueuedSynchronizer
         try {
             for (;;) {
                 final Node p = node.predecessor();
+                // TODO 首节点并且获取状态,则设定当前线程为首节点
                 if (p == head && tryAcquire(arg)) {
                     setHead(node);
                     p.next = null; // help GC
@@ -967,6 +974,7 @@ public abstract class AbstractQueuedSynchronizer
             boolean interrupted = false;
             for (;;) {
                 final Node p = node.predecessor();
+                // TODO 如果是首节点
                 if (p == head) {
                     int r = tryAcquireShared(arg);
                     if (r >= 0) {
@@ -1193,6 +1201,7 @@ public abstract class AbstractQueuedSynchronizer
      *         {@code false} otherwise
      * @throws UnsupportedOperationException if conditions are not supported
      */
+    // TODO 在排它模式下，状态是否被占用
     protected boolean isHeldExclusively() {
         throw new UnsupportedOperationException();
     }

@@ -135,7 +135,9 @@ public class ReentrantLock implements Lock, java.io.Serializable {
                     return true;
                 }
             }
+            // TODO 支持重入
             else if (current == getExclusiveOwnerThread()) {
+                // TODO 已经被当前线程获得所，因为无需cas
                 int nextc = c + acquires;
                 if (nextc < 0) // overflow
                     throw new Error("Maximum lock count exceeded");
