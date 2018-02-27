@@ -1655,8 +1655,10 @@ public abstract class AbstractQueuedSynchronizer
      * @return true if is reacquiring
      */
     final boolean isOnSyncQueue(Node node) {
+        // TODO 如果在condition队列中，或者前序节点为空(head)
         if (node.waitStatus == Node.CONDITION || node.prev == null)
             return false;
+        // TODO 不在condition队列中并且前序与后续节点都不为空,说明在sync同步队列中
         if (node.next != null) // If has successor, it must be on queue
             return true;
         /*
@@ -1667,6 +1669,7 @@ public abstract class AbstractQueuedSynchronizer
          * unless the CAS failed (which is unlikely), it will be
          * there, so we hardly ever traverse much.
          */
+        // TODO 不在condition队列中并且前序节点都不为空,则从tail开始往前找
         return findNodeFromTail(node);
     }
 
@@ -2072,10 +2075,12 @@ public abstract class AbstractQueuedSynchronizer
         public final void await() throws InterruptedException {
             if (Thread.interrupted())
                 throw new InterruptedException();
+            // TODO 将当前线程包装成Node加入condition队列
             Node node = addConditionWaiter();
             int savedState = fullyRelease(node);
             int interruptMode = 0;
             while (!isOnSyncQueue(node)) {
+                // TODO 不在同步队列里，就park当前线程
                 LockSupport.park(this);
                 if ((interruptMode = checkInterruptWhileWaiting(node)) != 0)
                     break;
