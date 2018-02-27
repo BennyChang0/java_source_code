@@ -205,12 +205,14 @@ public class ReentrantLock implements Lock, java.io.Serializable {
          * acquire on failure.
          */
         final void lock() {
+            // TODO 立刻尝试cas获取锁,失败后再通过acquire()方法获取锁
             if (compareAndSetState(0, 1))
                 setExclusiveOwnerThread(Thread.currentThread());
             else
                 acquire(1);
         }
 
+        // TODO 非公平锁，不考虑前序节点是否存在
         protected final boolean tryAcquire(int acquires) {
             return nonfairTryAcquire(acquires);
         }
@@ -230,10 +232,12 @@ public class ReentrantLock implements Lock, java.io.Serializable {
          * Fair version of tryAcquire.  Don't grant access unless
          * recursive call or no waiters or is first.
          */
+        // TODO 公平锁，考虑前序节点是否存在
         protected final boolean tryAcquire(int acquires) {
             final Thread current = Thread.currentThread();
             int c = getState();
             if (c == 0) {
+                // TODO 如果没前继节点,并且获取锁成功
                 if (!hasQueuedPredecessors() &&
                     compareAndSetState(0, acquires)) {
                     setExclusiveOwnerThread(current);
