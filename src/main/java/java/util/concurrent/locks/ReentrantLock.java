@@ -259,6 +259,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      * Creates an instance of {@code ReentrantLock}.
      * This is equivalent to using {@code ReentrantLock(false)}.
      */
+    // TODO 默认是非公平锁，并发性能高
     public ReentrantLock() {
         sync = new NonfairSync();
     }

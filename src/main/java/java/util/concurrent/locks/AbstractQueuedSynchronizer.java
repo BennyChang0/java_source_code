@@ -608,8 +608,9 @@ public abstract class AbstractQueuedSynchronizer
      * @param mode Node.EXCLUSIVE for exclusive, Node.SHARED for shared
      * @return the new node
      */
-    // TODO 将当前线程包装成Node添加到等待队列的tail
+    // TODO 死循环将当前线程包装成Node添加到等待队列的tail
     private Node addWaiter(Node mode) {
+        // TODO 独占模式nextWaiter=null, 共享模式nextWaiter=SHARED
         Node node = new Node(Thread.currentThread(), mode);
         // Try the fast path of enq; backup to full enq on failure
         // TODO 尝试快速添加到tail
@@ -809,7 +810,7 @@ public abstract class AbstractQueuedSynchronizer
      * @param node the node
      * @return {@code true} if thread should block
      */
-    // TODO 如果true，则需要将线程阻塞
+    // TODO 如果前序节点是头结点，状态为SIGNAL，则可以安全的park线程
     private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
         int ws = pred.waitStatus;
         if (ws == Node.SIGNAL)
@@ -1218,6 +1219,7 @@ public abstract class AbstractQueuedSynchronizer
      *        {@link #tryAcquire} but is otherwise uninterpreted and
      *        can represent anything you like.
      */
+    // TODO 尝试获取锁，如果失败则构造Node节点进入等待队列自旋(获取前序节点是否为head并且获取锁)
     public final void acquire(int arg) {
         if (!tryAcquire(arg) &&
             acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
@@ -1691,6 +1693,7 @@ public abstract class AbstractQueuedSynchronizer
      * @return true if successfully transferred (else the node was
      * cancelled before signal)
      */
+    // TODO 将condition队列中的一个节点转移到sync队列中
     final boolean transferForSignal(Node node) {
         /*
          * If cannot change waitStatus, the node has been cancelled.
@@ -1706,7 +1709,9 @@ public abstract class AbstractQueuedSynchronizer
          */
         Node p = enq(node);
         int ws = p.waitStatus;
+        // TODO 如果node状态是被取消或者，设置等待状态为SIGNAL失败
         if (ws > 0 || !compareAndSetWaitStatus(p, ws, Node.SIGNAL))
+            // TODO
             LockSupport.unpark(node.thread);
         return true;
     }
@@ -1872,8 +1877,10 @@ public abstract class AbstractQueuedSynchronizer
         private Node addConditionWaiter() {
             Node t = lastWaiter;
             // If lastWaiter is cancelled, clean out.
+            // TODO 如果最后一个waiter已取消就清理掉
             if (t != null && t.waitStatus != Node.CONDITION) {
                 unlinkCancelledWaiters();
+                // TODO 清理后重新取lastWaiter赋值
                 t = lastWaiter;
             }
             Node node = new Node(Thread.currentThread(), Node.CONDITION);
@@ -1928,17 +1935,23 @@ public abstract class AbstractQueuedSynchronizer
          * without requiring many re-traversals during cancellation
          * storms.
          */
+        // TODO 清除等待队列中的非CONDITION状态的节点
         private void unlinkCancelledWaiters() {
             Node t = firstWaiter;
             Node trail = null;
             while (t != null) {
                 Node next = t.nextWaiter;
                 if (t.waitStatus != Node.CONDITION) {
+                    // TODO 去掉头结点
                     t.nextWaiter = null;
+
+                    // TODO 如果头节点被清除，则将后续节点设置为头结点
                     if (trail == null)
                         firstWaiter = next;
                     else
+                        // TODO 将前序节点的nextWaiter指向被清除节点的后续节点
                         trail.nextWaiter = next;
+                    // TODO 如果没有后续节点，则给lastWaiter赋值
                     if (next == null)
                         lastWaiter = trail;
                 }
