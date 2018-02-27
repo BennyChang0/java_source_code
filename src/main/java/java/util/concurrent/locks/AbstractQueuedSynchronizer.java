@@ -586,6 +586,7 @@ public abstract class AbstractQueuedSynchronizer
      * @param node the node to insert
      * @return node's predecessor
      */
+    // TODO 将节点放入同步队列，并返回前序节点
     private Node enq(final Node node) {
         for (;;) {
             Node t = tail;
@@ -1701,7 +1702,10 @@ public abstract class AbstractQueuedSynchronizer
         /*
          * If cannot change waitStatus, the node has been cancelled.
          */
+        // TODO 将等待状态从CONDITION设置为0
         if (!compareAndSetWaitStatus(node, Node.CONDITION, 0))
+            // TODO 如果更新状态的操作失败就直接返回false
+            // TODO 可能是transferAfterCancelledWait方法先将状态改变了, 导致这步CAS操作失败
             return false;
 
         /*
@@ -1710,12 +1714,13 @@ public abstract class AbstractQueuedSynchronizer
          * attempt to set waitStatus fails, wake up to resync (in which
          * case the waitStatus can be transiently and harmlessly wrong).
          */
-        // TODO 将节点放入sync同步队列
+        // TODO 将节点放入sync同步队列,返回前序节点
         Node p = enq(node);
         int ws = p.waitStatus;
-        // TODO 如果node状态是被取消,或者设置等待状态为SIGNAL失败
         if (ws > 0 || !compareAndSetWaitStatus(p, ws, Node.SIGNAL))
-            // TODO unpark节点的线程使其自旋
+            // TODO 出现以下情况就会唤醒当前线程
+            //1.前继结点是取消状态
+            //2.更新前继结点的状态为SIGNAL操作失败
             LockSupport.unpark(node.thread);
         return true;
     }
@@ -1728,7 +1733,9 @@ public abstract class AbstractQueuedSynchronizer
      * @return true if cancelled before the node was signalled
      */
     final boolean transferAfterCancelledWait(Node node) {
+        // TODO 如果这步CAS操作成功的话就表明中断发生在signal方法之前
         if (compareAndSetWaitStatus(node, Node.CONDITION, 0)) {
+            // TODO 放入同步队列尾部
             enq(node);
             return true;
         }
@@ -1738,6 +1745,7 @@ public abstract class AbstractQueuedSynchronizer
          * incomplete transfer is both rare and transient, so just
          * spin.
          */
+        // TODO 如果sinal方法还没有将结点转移到同步队列, 就通过自旋等待一下
         while (!isOnSyncQueue(node))
             Thread.yield();
         return false;
@@ -1752,14 +1760,19 @@ public abstract class AbstractQueuedSynchronizer
     final int fullyRelease(Node node) {
         boolean failed = true;
         try {
+            // TODO 获取当前的同步状态
             int savedState = getState();
+            // TODO 使用当前的同步状态去释放锁
             if (release(savedState)) {
                 failed = false;
+                // TODO 如果释放锁成功就返回当前同步状态
                 return savedState;
             } else {
+                // TODO 如果释放锁失败就抛出运行时异常
                 throw new IllegalMonitorStateException();
             }
         } finally {
+            // TODO 没有成功释放锁就将该结点设置为取消状态
             if (failed)
                 node.waitStatus = Node.CANCELLED;
         }
@@ -1903,11 +1916,16 @@ public abstract class AbstractQueuedSynchronizer
          * to inline the case of no waiters.
          * @param first (non-null) the first node on condition queue
          */
+        // TODO 唤醒条件队列中的头结点
         private void doSignal(Node first) {
             do {
+                // TODO 将firstWaiter引用向后移动一位
                 if ( (firstWaiter = first.nextWaiter) == null)
                     lastWaiter = null;
+                // TODO 将头结点的后继结点引用置空
                 first.nextWaiter = null;
+                // TODO 将头结点转移到同步队列, 转移完成后有可能唤醒线程
+                // TODO 如果transferForSignal操作失败就去唤醒下一个结点
             } while (!transferForSignal(first) &&
                      (first = firstWaiter) != null);
         }
@@ -2011,15 +2029,24 @@ public abstract class AbstractQueuedSynchronizer
          *      {@link #acquire} with saved state as argument.
          * </ol>
          */
+        // TODO 不响应线程中断的条件等待
         public final void awaitUninterruptibly() {
+            // TODO 将当前线程添加到条件队列尾部
             Node node = addConditionWaiter();
+            // TODO 完全释放锁并返回当前同步状态
             int savedState = fullyRelease(node);
             boolean interrupted = false;
+            // TODO 一直在while循环里进行条件等待
             while (!isOnSyncQueue(node)) {
+                // TODO park挂起当前线程
                 LockSupport.park(this);
+                // TODO 线程醒来发现中断并不会马上去响应
                 if (Thread.interrupted())
                     interrupted = true;
             }
+            // TODO 在这里响应所有中断请求, 满足以下两个条件之一就会将自己挂起
+            // 1.线程在条件等待时收到中断请求
+            // 2.线程在acquireQueued方法里收到中断请求
             if (acquireQueued(node, savedState) || interrupted)
                 selfInterrupt();
         }
@@ -2053,8 +2080,10 @@ public abstract class AbstractQueuedSynchronizer
          */
         private void reportInterruptAfterWait(int interruptMode)
             throws InterruptedException {
+            // TODO 如果中断模式是THROW_IE就抛出异常
             if (interruptMode == THROW_IE)
                 throw new InterruptedException();
+            // TODO 如果中断模式是REINTERRUPT就自己挂起
             else if (interruptMode == REINTERRUPT)
                 selfInterrupt();
         }
@@ -2072,21 +2101,30 @@ public abstract class AbstractQueuedSynchronizer
          * <li> If interrupted while blocked in step 4, throw InterruptedException.
          * </ol>
          */
+        // TODO 响应线程中断的条件等待
         public final void await() throws InterruptedException {
             if (Thread.interrupted())
                 throw new InterruptedException();
             // TODO 将当前线程包装成Node加入condition队列
             Node node = addConditionWaiter();
+            // TODO 在进入条件等待之前先完全释放锁
             int savedState = fullyRelease(node);
             int interruptMode = 0;
             while (!isOnSyncQueue(node)) {
                 // TODO 不在同步队列里，就park当前线程
+                // 进行条件等待的线程都在这里被挂起, 线程被唤醒的情况有以下几种：
+                // 1.同步队列的前继结点已取消
+                // 2.设置同步队列的前继结点的状态为SIGNAL失败
+                // 3.前继结点释放锁后唤醒当前结点
                 LockSupport.park(this);
+                // TODO 当前线程醒来后立马检查是否被中断, 如果是则代表结点取消条件等待, 此时需要将结点移出条件队列
                 if ((interruptMode = checkInterruptWhileWaiting(node)) != 0)
                     break;
             }
+            // TODO 线程醒来后就会以独占模式获取锁
             if (acquireQueued(node, savedState) && interruptMode != THROW_IE)
                 interruptMode = REINTERRUPT;
+            // TODO 防止线程在signal之前中断而导致没与条件队列断绝联系
             if (node.nextWaiter != null) // clean up if cancelled
                 unlinkCancelledWaiters();
             if (interruptMode != 0)
