@@ -1707,11 +1707,12 @@ public abstract class AbstractQueuedSynchronizer
          * attempt to set waitStatus fails, wake up to resync (in which
          * case the waitStatus can be transiently and harmlessly wrong).
          */
+        // TODO 将节点放入sync同步队列
         Node p = enq(node);
         int ws = p.waitStatus;
-        // TODO 如果node状态是被取消或者，设置等待状态为SIGNAL失败
+        // TODO 如果node状态是被取消,或者设置等待状态为SIGNAL失败
         if (ws > 0 || !compareAndSetWaitStatus(p, ws, Node.SIGNAL))
-            // TODO
+            // TODO unpark节点的线程使其自旋
             LockSupport.unpark(node.thread);
         return true;
     }
@@ -1877,8 +1878,9 @@ public abstract class AbstractQueuedSynchronizer
         private Node addConditionWaiter() {
             Node t = lastWaiter;
             // If lastWaiter is cancelled, clean out.
-            // TODO 如果最后一个waiter已取消就清理掉
+            // TODO 如果最后一个waiter不为空并且已取消
             if (t != null && t.waitStatus != Node.CONDITION) {
+                // TODO 清理取消的waiter
                 unlinkCancelledWaiters();
                 // TODO 清理后重新取lastWaiter赋值
                 t = lastWaiter;
@@ -1938,6 +1940,7 @@ public abstract class AbstractQueuedSynchronizer
         // TODO 清除等待队列中的非CONDITION状态的节点
         private void unlinkCancelledWaiters() {
             Node t = firstWaiter;
+            // TODO 跟踪节点
             Node trail = null;
             while (t != null) {
                 Node next = t.nextWaiter;
