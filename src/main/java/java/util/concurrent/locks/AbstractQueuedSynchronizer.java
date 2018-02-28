@@ -591,6 +591,7 @@ public abstract class AbstractQueuedSynchronizer
         for (;;) {
             Node t = tail;
             if (t == null) { // Must initialize
+                // TODO 初始化head和tail节点
                 if (compareAndSetHead(new Node()))
                     tail = head;
             } else {
@@ -610,7 +611,7 @@ public abstract class AbstractQueuedSynchronizer
      * @param mode Node.EXCLUSIVE for exclusive, Node.SHARED for shared
      * @return the new node
      */
-    // TODO 死循环将当前线程包装成Node添加到等待队列的tail
+    // TODO 死循环将当前线程包装成Node添加到等待队列的tail,并返回该node
     private Node addWaiter(Node mode) {
         // TODO 独占模式nextWaiter=null, 共享模式nextWaiter=SHARED
         Node node = new Node(Thread.currentThread(), mode);
@@ -619,7 +620,7 @@ public abstract class AbstractQueuedSynchronizer
         Node pred = tail;
         if (pred != null) {
             node.prev = pred;
-            // TODO 设置tailOffset
+            // TODO 设置tail
             if (compareAndSetTail(pred, node)) {
                 pred.next = node;
                 return node;
