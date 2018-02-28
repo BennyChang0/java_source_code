@@ -162,6 +162,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         if (++putIndex == items.length)
             putIndex = 0;
         count++;
+        // TODO 唤醒条件队列的首节点
         notEmpty.signal();
     }
 
@@ -308,6 +309,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
      * @throws IllegalStateException if this queue is full
      * @throws NullPointerException if the specified element is null
      */
+    // TODO 往队列添加元素,如果满了就抛出异常
     public boolean add(E e) {
         return super.add(e);
     }
@@ -350,6 +352,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         lock.lockInterruptibly();
         try {
             while (count == items.length)
+                // TODO 如果队列满了，释放锁并放入到notFull条件等待队列
                 notFull.await();
             enqueue(e);
         } finally {
@@ -373,6 +376,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         final ReentrantLock lock = this.lock;
         lock.lockInterruptibly();
         try {
+            // TODO 如果队列满了，则等待一段时间
             while (count == items.length) {
                 if (nanos <= 0)
                     return false;

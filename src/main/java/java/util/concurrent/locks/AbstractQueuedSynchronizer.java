@@ -594,6 +594,7 @@ public abstract class AbstractQueuedSynchronizer
                 if (compareAndSetHead(new Node()))
                     tail = head;
             } else {
+                // TODO 设置前序节点,并将node放到队列尾部
                 node.prev = t;
                 if (compareAndSetTail(t, node)) {
                     t.next = node;
@@ -668,12 +669,12 @@ public abstract class AbstractQueuedSynchronizer
         // TODO 如果下一节点是null或者已经被取消
         if (s == null || s.waitStatus > 0) {
             s = null;
-            // TODO 从tail开始向前遍历,找到一个没有被取消的node
+            // TODO 从tail开始向前遍历,找到最前面一个没有被取消的node
             for (Node t = tail; t != null && t != node; t = t.prev)
                 if (t.waitStatus <= 0)
                     s = t;
         }
-        // TODO unpark找到的node
+        // TODO unpark节点的线程
         if (s != null)
             LockSupport.unpark(s.thread);
     }
@@ -881,14 +882,14 @@ public abstract class AbstractQueuedSynchronizer
             boolean interrupted = false;
             for (;;) {
                 final Node p = node.predecessor();
-                // TODO 首节点且获取状态成功,则设定为首节点
+                // TODO 前序节点是head且获取锁成功,则设定为首节点
                 if (p == head && tryAcquire(arg)) {
                     setHead(node);
                     p.next = null; // help GC
                     failed = false;
                     return interrupted;
                 }
-                // TODO 如果获取失败，判断是否需要park
+                // TODO 如果前序节点不是head或者获取锁失败，判断是否需要park
                 if (shouldParkAfterFailedAcquire(p, node) &&
                     parkAndCheckInterrupt())
                     interrupted = true;
@@ -1284,10 +1285,12 @@ public abstract class AbstractQueuedSynchronizer
      *        can represent anything you like.
      * @return the value returned from {@link #tryRelease}
      */
+    // TODO 接触后续节点的阻塞状态unpark
     public final boolean release(int arg) {
         if (tryRelease(arg)) {
             Node h = head;
             if (h != null && h.waitStatus != 0)
+                // TODO unpark后续node的线程
                 unparkSuccessor(h);
             return true;
         }
@@ -1655,11 +1658,12 @@ public abstract class AbstractQueuedSynchronizer
      * @param node the node
      * @return true if is reacquiring
      */
+    // TODO 判断node是否在同步队列里
     final boolean isOnSyncQueue(Node node) {
-        // TODO 如果在condition队列中，或者前序节点为空(head)
+        // TODO 如果在condition队列中，或者是head节点
         if (node.waitStatus == Node.CONDITION || node.prev == null)
             return false;
-        // TODO 不在condition队列中并且前序与后续节点都不为空,说明在sync同步队列中
+        // TODO 不在condition队列中，且不是head节点；如果有后续node就肯定在sync同步队列中
         if (node.next != null) // If has successor, it must be on queue
             return true;
         /*
@@ -1679,6 +1683,7 @@ public abstract class AbstractQueuedSynchronizer
      * Called only when needed by isOnSyncQueue.
      * @return true if present
      */
+    // TODO 从队列尾部找到node
     private boolean findNodeFromTail(Node node) {
         Node t = tail;
         for (;;) {
@@ -1714,7 +1719,7 @@ public abstract class AbstractQueuedSynchronizer
          * attempt to set waitStatus fails, wake up to resync (in which
          * case the waitStatus can be transiently and harmlessly wrong).
          */
-        // TODO 将节点放入sync同步队列,返回前序节点
+        // TODO 唤醒失败，将节点再放入sync同步队列,返回前序节点
         Node p = enq(node);
         int ws = p.waitStatus;
         if (ws > 0 || !compareAndSetWaitStatus(p, ws, Node.SIGNAL))
@@ -1733,7 +1738,7 @@ public abstract class AbstractQueuedSynchronizer
      * @return true if cancelled before the node was signalled
      */
     final boolean transferAfterCancelledWait(Node node) {
-        // TODO 如果这步CAS操作成功的话就表明中断发生在signal方法之前
+        // TODO 如果这步CAS操作成功的话,就表明取消等待发生在signal方法之前
         if (compareAndSetWaitStatus(node, Node.CONDITION, 0)) {
             // TODO 放入同步队列尾部
             enq(node);
@@ -1745,7 +1750,7 @@ public abstract class AbstractQueuedSynchronizer
          * incomplete transfer is both rare and transient, so just
          * spin.
          */
-        // TODO 如果sinal方法还没有将结点转移到同步队列, 就通过自旋等待一下
+        // TODO 如果signal方法还没有将结点转移到同步队列, 就通过自旋等待一下
         while (!isOnSyncQueue(node))
             Thread.yield();
         return false;
@@ -1995,6 +2000,7 @@ public abstract class AbstractQueuedSynchronizer
          * @throws IllegalMonitorStateException if {@link #isHeldExclusively}
          *         returns {@code false}
          */
+        // TODO 将条件队列里最长等待的node，转移到同步队列
         public final void signal() {
             if (!isHeldExclusively())
                 throw new IllegalMonitorStateException();
@@ -2068,6 +2074,7 @@ public abstract class AbstractQueuedSynchronizer
          * before signalled, REINTERRUPT if after signalled, or
          * 0 if not interrupted.
          */
+        // TODO 在条件队列里被打断(-1)，在同步队列里被打断(1)，没有被打断(0)
         private int checkInterruptWhileWaiting(Node node) {
             return Thread.interrupted() ?
                 (transferAfterCancelledWait(node) ? THROW_IE : REINTERRUPT) :
@@ -2107,7 +2114,7 @@ public abstract class AbstractQueuedSynchronizer
                 throw new InterruptedException();
             // TODO 将当前线程包装成Node加入condition队列
             Node node = addConditionWaiter();
-            // TODO 在进入条件等待之前先完全释放锁
+            // TODO 完全释放锁
             int savedState = fullyRelease(node);
             int interruptMode = 0;
             while (!isOnSyncQueue(node)) {
@@ -2117,7 +2124,7 @@ public abstract class AbstractQueuedSynchronizer
                 // 2.设置同步队列的前继结点的状态为SIGNAL失败
                 // 3.前继结点释放锁后唤醒当前结点
                 LockSupport.park(this);
-                // TODO 当前线程醒来后立马检查是否被中断, 如果是则代表结点取消条件等待, 此时需要将结点移出条件队列
+                // TODO 当前线程醒来后立马检查是否被打断, 如果是则代表结点取消条件等待, 此时需要将结点移出条件队列
                 if ((interruptMode = checkInterruptWhileWaiting(node)) != 0)
                     break;
             }
@@ -2144,6 +2151,7 @@ public abstract class AbstractQueuedSynchronizer
          * <li> If interrupted while blocked in step 4, throw InterruptedException.
          * </ol>
          */
+        // TODO 在条件队列超过一定时间后，放入到同步队列
         public final long awaitNanos(long nanosTimeout)
                 throws InterruptedException {
             if (Thread.interrupted())
@@ -2154,6 +2162,7 @@ public abstract class AbstractQueuedSynchronizer
             int interruptMode = 0;
             while (!isOnSyncQueue(node)) {
                 if (nanosTimeout <= 0L) {
+                    // TODO 从条件队列转入同步队列
                     transferAfterCancelledWait(node);
                     break;
                 }
@@ -2163,6 +2172,7 @@ public abstract class AbstractQueuedSynchronizer
                     break;
                 nanosTimeout = deadline - System.nanoTime();
             }
+            // TODO 尝试获得同步队列head位置并等待信号
             if (acquireQueued(node, savedState) && interruptMode != THROW_IE)
                 interruptMode = REINTERRUPT;
             if (node.nextWaiter != null)
