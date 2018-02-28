@@ -650,6 +650,7 @@ public abstract class AbstractQueuedSynchronizer
      *
      * @param node the node
      */
+    // TODO 用unpark()唤醒等待队列中最前边的那个未放弃线程
     private void unparkSuccessor(Node node) {
         /*
          * If status is negative (i.e., possibly needing signal) try
@@ -670,12 +671,11 @@ public abstract class AbstractQueuedSynchronizer
         // TODO 如果下一节点是null或者已经被取消
         if (s == null || s.waitStatus > 0) {
             s = null;
-            // TODO 从tail开始向前遍历,找到最前面一个没有被取消的node
+            // TODO 从tail开始向前找到最前面一个没有被取消的node
             for (Node t = tail; t != null && t != node; t = t.prev)
                 if (t.waitStatus <= 0)
                     s = t;
         }
-        // TODO unpark节点的线程
         if (s != null)
             LockSupport.unpark(s.thread);
     }
@@ -702,7 +702,7 @@ public abstract class AbstractQueuedSynchronizer
             Node h = head;
             if (h != null && h != tail) {
                 int ws = h.waitStatus;
-                // TODO 已经获得锁
+                // TODO 如果需要唤醒后续节点
                 if (ws == Node.SIGNAL) {
                     // TODO 将节点waitStatus设置为0
                     if (!compareAndSetWaitStatus(h, Node.SIGNAL, 0))
@@ -745,6 +745,7 @@ public abstract class AbstractQueuedSynchronizer
          * racing acquires/releases, so most need signals now or soon
          * anyway.
          */
+        // TODO 如果还有剩余量，继续唤醒下一个邻居线程
         if (propagate > 0 || h == null || h.waitStatus < 0 ||
             (h = head) == null || h.waitStatus < 0) {
             Node s = node.next;
@@ -813,9 +814,10 @@ public abstract class AbstractQueuedSynchronizer
      * @param node the node
      * @return {@code true} if thread should block
      */
-    // TODO 如果前序节点是头结点，状态为SIGNAL，则可以安全的park线程
+    // TODO 如果前序节点是头结点且状态为SIGNAL，则可以安全的park线程
     private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
         int ws = pred.waitStatus;
+        // TODO 如果前驱状态是SIGNAL，则park线程并等待被唤醒
         if (ws == Node.SIGNAL)
             /*
              * This node has already set status asking a release
@@ -827,7 +829,7 @@ public abstract class AbstractQueuedSynchronizer
              * Predecessor was cancelled. Skip over predecessors and
              * indicate retry.
              */
-            // TODO 找到一个非取消的前驱节点, pred=head，则前驱节点为tail
+            // TODO 找到一个非取消的前驱节点,并排在后面
             do {
                 node.prev = pred = pred.prev;
             } while (pred.waitStatus > 0);
@@ -838,6 +840,7 @@ public abstract class AbstractQueuedSynchronizer
              * need a signal, but don't park yet.  Caller will need to
              * retry to make sure it cannot acquire before parking.
              */
+            // TODO ws == 0, 如果前驱正常并且获得锁，那就把前驱的状态设置成SIGNAL，告诉它拿完号后通知自己一下
             compareAndSetWaitStatus(pred, ws, Node.SIGNAL);
         }
         return false;
@@ -856,7 +859,9 @@ public abstract class AbstractQueuedSynchronizer
      * @return {@code true} if interrupted
      */
     private final boolean parkAndCheckInterrupt() {
+        // TODO 调用park()使线程进入waiting状态
         LockSupport.park(this);
+        // TODO 如果被唤醒，查看自己是不是被中断的, Thread.interrupted()清除当前线程的中断标记位
         return Thread.interrupted();
     }
 
@@ -972,16 +977,20 @@ public abstract class AbstractQueuedSynchronizer
      * @param arg the acquire argument
      */
     private void doAcquireShared(int arg) {
+        // TODO 当前竞争同步的线程添加到链表尾部
         final Node node = addWaiter(Node.SHARED);
         boolean failed = true;
         try {
             boolean interrupted = false;
+            // TODO 然后自旋
             for (;;) {
                 final Node p = node.predecessor();
                 // TODO 如果是首节点
                 if (p == head) {
                     int r = tryAcquireShared(arg);
+                    // TODO 获取资源成功
                     if (r >= 0) {
+                        // TODO 将head指向自己，还有剩余资源可以再唤醒之后的线程
                         setHeadAndPropagate(node, r);
                         p.next = null; // help GC
                         if (interrupted)
@@ -1155,6 +1164,7 @@ public abstract class AbstractQueuedSynchronizer
      *         return values enables this method to be used in contexts
      *         where acquires only sometimes act exclusively.)  Upon
      *         success, this object has been acquired.
+     * // TODO 负值代表获取失败；0代表获取成功，但没有剩余资源；正数表示获取成功，还有剩余资源，其他线程还可以去获取成功
      * @throws IllegalMonitorStateException if acquiring would place this
      *         synchronizer in an illegal state. This exception must be
      *         thrown in a consistent fashion for synchronization to work
@@ -1226,6 +1236,7 @@ public abstract class AbstractQueuedSynchronizer
     public final void acquire(int arg) {
         if (!tryAcquire(arg) &&
             acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
+            // TODO 如果线程在等待过程中被中断过，它是不响应的。只是获取资源后才再进行自我中断selfInterrupt()，将中断补上
             selfInterrupt();
     }
 
@@ -1286,7 +1297,7 @@ public abstract class AbstractQueuedSynchronizer
      *        can represent anything you like.
      * @return the value returned from {@link #tryRelease}
      */
-    // TODO 接触后续节点的阻塞状态unpark
+    // TODO 释放锁，并且唤醒后续节点
     public final boolean release(int arg) {
         if (tryRelease(arg)) {
             Node h = head;
