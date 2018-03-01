@@ -685,7 +685,7 @@ public abstract class AbstractQueuedSynchronizer
      * propagation. (Note: For exclusive mode, release just amounts
      * to calling unparkSuccessor of head if it needs signal.)
      */
-    // TODO shared model 共享模式下释放锁，signal后续节点并且确保传播；如果是独占模式下则只unpark head 不会传播到后续节点
+    // TODO shared model 共享模式下释放锁，signal后续节点并且确保传播
     private void doReleaseShared() {
         /*
          * Ensure that a release propagates, even if there are other
@@ -704,15 +704,17 @@ public abstract class AbstractQueuedSynchronizer
                 int ws = h.waitStatus;
                 // TODO 如果需要唤醒后续节点
                 if (ws == Node.SIGNAL) {
-                    // TODO 将节点waitStatus设置为0
+                    // TODO 将head节点waitStatus设置为0
                     if (!compareAndSetWaitStatus(h, Node.SIGNAL, 0))
                         continue;            // loop to recheck cases
+                    // TODO 唤醒后续节点
                     unparkSuccessor(h);
                 }
                 else if (ws == 0 &&
                          !compareAndSetWaitStatus(h, 0, Node.PROPAGATE))
                     continue;                // loop on failed CAS
             }
+            // TODO 如果head节点变化则继续循环
             if (h == head)                   // loop if head changed
                 break;
         }
@@ -745,7 +747,7 @@ public abstract class AbstractQueuedSynchronizer
          * racing acquires/releases, so most need signals now or soon
          * anyway.
          */
-        // TODO 如果还有剩余量，继续唤醒下一个邻居线程
+        // TODO 如果还有剩余量，继续唤醒下一个node
         if (propagate > 0 || h == null || h.waitStatus < 0 ||
             (h = head) == null || h.waitStatus < 0) {
             Node s = node.next;
@@ -1015,14 +1017,17 @@ public abstract class AbstractQueuedSynchronizer
      */
     private void doAcquireSharedInterruptibly(int arg)
         throws InterruptedException {
+        // TODO 包装成共享模式的node添加到同步队列tail
         final Node node = addWaiter(Node.SHARED);
         boolean failed = true;
         try {
             for (;;) {
                 final Node p = node.predecessor();
                 if (p == head) {
+                    // TODO 大于等于0获取成功
                     int r = tryAcquireShared(arg);
                     if (r >= 0) {
+                        // TODO 设置自己为head，如果还有剩余，则唤醒后续节点
                         setHeadAndPropagate(node, r);
                         p.next = null; // help GC
                         failed = false;
@@ -1342,6 +1347,8 @@ public abstract class AbstractQueuedSynchronizer
             throws InterruptedException {
         if (Thread.interrupted())
             throw new InterruptedException();
+        // TODO 判断返回值是否>=0；
+        // TODO 0 获取成功，但是没有剩余资源；如果大于0 表示获取成功，有剩余资源
         if (tryAcquireShared(arg) < 0)
             doAcquireSharedInterruptibly(arg);
     }
@@ -1890,6 +1897,7 @@ public abstract class AbstractQueuedSynchronizer
      * <p>This class is Serializable, but all fields are transient,
      * so deserialized conditions have no waiters.
      */
+    // TODO 在有条件场景下使用，比如：wait一定时间 or AQS同步队列是有数量限制的
     public class ConditionObject implements Condition, java.io.Serializable {
         private static final long serialVersionUID = 1173984872572414699L;
         /** First node of condition queue. */
@@ -1951,6 +1959,7 @@ public abstract class AbstractQueuedSynchronizer
          * Removes and transfers all nodes.
          * @param first (non-null) the first node on condition queue
          */
+        // TODO 将condition队列里的线程全部转移到同步队列
         private void doSignalAll(Node first) {
             lastWaiter = firstWaiter = null;
             do {

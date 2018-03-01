@@ -136,6 +136,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * @author Doug Lea
  */
+// TODO 循环栅栏
 public class CyclicBarrier {
     /**
      * Each use of the barrier is represented as a generation instance.
@@ -199,6 +200,7 @@ public class CyclicBarrier {
         throws InterruptedException, BrokenBarrierException,
                TimeoutException {
         final ReentrantLock lock = this.lock;
+        // TODO 获得锁
         lock.lock();
         try {
             final Generation g = generation;
@@ -212,6 +214,7 @@ public class CyclicBarrier {
             }
 
             int index = --count;
+            // TODO 推倒栅栏
             if (index == 0) {  // tripped
                 boolean ranAction = false;
                 try {
@@ -249,6 +252,7 @@ public class CyclicBarrier {
                 if (g.broken)
                     throw new BrokenBarrierException();
 
+                // TODO 如果不是同一批
                 if (g != generation)
                     return index;
 
@@ -258,6 +262,7 @@ public class CyclicBarrier {
                 }
             }
         } finally {
+            // TODO 释放锁
             lock.unlock();
         }
     }
@@ -272,6 +277,7 @@ public class CyclicBarrier {
      *        before the barrier is tripped
      * @param barrierAction the command to execute when the barrier is
      *        tripped, or {@code null} if there is no action
+     * // TODO 当栅栏倒了，就是state==0时，执行barrierAction动作
      * @throws IllegalArgumentException if {@code parties} is less than 1
      */
     public CyclicBarrier(int parties, Runnable barrierAction) {
