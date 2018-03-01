@@ -81,7 +81,9 @@ import java.util.Spliterator;
  */
 public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         implements BlockingQueue<E>, java.io.Serializable {
-
+    // TODO 提供阻塞与非阻塞方式修改数组大小
+    // TODO 阻塞   put(E)  take()
+    // TODO 非阻塞 offer(E) poll()
     /**
      * Serialization ID. This class relies on default serialization
      * even for the items array, which is default-serialized, even if

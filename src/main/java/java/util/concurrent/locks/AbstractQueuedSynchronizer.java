@@ -1897,7 +1897,7 @@ public abstract class AbstractQueuedSynchronizer
      * <p>This class is Serializable, but all fields are transient,
      * so deserialized conditions have no waiters.
      */
-    // TODO 在有条件场景下使用，比如：wait一定时间 or AQS同步队列是有数量限制的
+    // TODO 在有条件场景下使用，比如：wait一定时间 or AQS同步队列是有数量限制(size)并且要阻塞操作(take,put)
     public class ConditionObject implements Condition, java.io.Serializable {
         private static final long serialVersionUID = 1173984872572414699L;
         /** First node of condition queue. */
