@@ -216,10 +216,10 @@ public class ReentrantReadWriteLock
         implements ReadWriteLock, java.io.Serializable {
     private static final long serialVersionUID = -6992448646407690164L;
     /** Inner class providing readlock */
-    // TODO 读锁：没有写请求，或者写请求和读请求的是同一个线程
+    // TODO 读锁（共享锁）：没有写请求，或者写请求和读请求的是同一个线程
     private final ReentrantReadWriteLock.ReadLock readerLock;
     /** Inner class providing writelock */
-    // TODO 写锁：不能有读请求和写请求
+    // TODO 写锁（独占锁）：不能有读请求和写请求
     private final ReentrantReadWriteLock.WriteLock writerLock;
     /** Performs all synchronization mechanics */
     final Sync sync;

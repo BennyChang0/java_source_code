@@ -113,9 +113,11 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
     final ReentrantLock lock;
 
     /** Condition for waiting takes */
+    // TODO 可以取出的条件队列
     private final Condition notEmpty;
 
     /** Condition for waiting puts */
+    // TODO 可以放入的条件队列
     private final Condition notFull;
 
     /**
