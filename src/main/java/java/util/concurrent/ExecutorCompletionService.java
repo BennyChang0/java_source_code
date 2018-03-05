@@ -105,8 +105,10 @@ package java.util.concurrent;
  * }}</pre>
  */
 public class ExecutorCompletionService<V> implements CompletionService<V> {
+    // TODO 线程池
     private final Executor executor;
     private final AbstractExecutorService aes;
+    // TODO 按照任务完成的顺序排列
     private final BlockingQueue<Future<V>> completionQueue;
 
     /**
@@ -149,6 +151,7 @@ public class ExecutorCompletionService<V> implements CompletionService<V> {
         this.executor = executor;
         this.aes = (executor instanceof AbstractExecutorService) ?
             (AbstractExecutorService) executor : null;
+        // TODO 链表阻塞队列
         this.completionQueue = new LinkedBlockingQueue<Future<V>>();
     }
 
@@ -178,6 +181,7 @@ public class ExecutorCompletionService<V> implements CompletionService<V> {
     public Future<V> submit(Callable<V> task) {
         if (task == null) throw new NullPointerException();
         RunnableFuture<V> f = newTaskFor(task);
+        // TODO 包装成QueueingFuture
         executor.execute(new QueueingFuture(f));
         return f;
     }
@@ -189,10 +193,12 @@ public class ExecutorCompletionService<V> implements CompletionService<V> {
         return f;
     }
 
+    // TODO 阻塞获取结果
     public Future<V> take() throws InterruptedException {
         return completionQueue.take();
     }
 
+    // TODO 非阻塞获取结果
     public Future<V> poll() {
         return completionQueue.poll();
     }

@@ -271,6 +271,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
                     setException(ex);
                 }
                 if (ran)
+                    // TODO 设置结果
                     set(result);
             }
         } finally {
@@ -381,6 +382,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
             }
         }
 
+        // TODO 子类QueueingTask.done()将结果添加到LinkedBlockingQueue
         done();
 
         callable = null;        // to reduce footprint

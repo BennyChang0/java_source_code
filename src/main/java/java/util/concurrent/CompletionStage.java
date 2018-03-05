@@ -155,7 +155,7 @@ public interface CompletionStage<T> {
      * @return the new CompletionStage
      */
     public <U> CompletionStage<U> thenApplyAsync
-        (Function<? super T,? extends U> fn);
+            (Function<? super T,? extends U> fn);
 
     /**
      * Returns a new CompletionStage that, when this stage completes
