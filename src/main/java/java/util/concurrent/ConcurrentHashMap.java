@@ -2650,19 +2650,20 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      * Replaces all linked nodes in bin at given index unless table is
      * too small, in which case resizes instead.
      */
-    // TODO 数组长度小于MIN_TREEIFY_CAPACITY则扩容1倍
     private final void treeifyBin(Node<K,V>[] tab, int index) {
         Node<K,V> b; int n, sc;
         if (tab != null) {
+            // TODO table长度小于64的时候，只是扩容2倍
             if ((n = tab.length) < MIN_TREEIFY_CAPACITY)
-                // TODO 扩容2倍
                 tryPresize(n << 1);
+            // TODO b.hash >= 0是普通链表Node
             else if ((b = tabAt(tab, index)) != null && b.hash >= 0) {
                 // TODO 锁住table的index下标对应的结点
                 synchronized (b) {
                     if (tabAt(tab, index) == b) {
                         // TODO hd是头节点
                         TreeNode<K,V> hd = null, tl = null;
+                        // TODO 将原Node链表转换成以TreeBin节点为元素的链表
                         for (Node<K,V> e = b; e != null; e = e.next) {
                             TreeNode<K,V> p =
                                 new TreeNode<K,V>(e.hash, e.key, e.val,
@@ -2674,6 +2675,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                                 tl.next = p;
                             tl = p;
                         }
+                        // TODO 在TreeBin的构造方法构造红黑树
                         setTabAt(tab, index, new TreeBin<K,V>(hd));
                     }
                 }
@@ -2810,6 +2812,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                     int h = x.hash;
                     Class<?> kc = null;
                     for (TreeNode<K,V> p = r;;) {
+                        // TODO 执行插入，dir为比对节点hash值大小的标识,决定插入时在左还是在右
                         int dir, ph;
                         K pk = p.key;
                         if ((ph = p.hash) > h)
@@ -3116,6 +3119,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
             return root;
         }
 
+        // TODO 插入后，执行恢复操作：重新涂色或旋转
         static <K,V> TreeNode<K,V> balanceInsertion(TreeNode<K,V> root,
                                                     TreeNode<K,V> x) {
             x.red = true;
