@@ -924,6 +924,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
     /**
      * {@inheritDoc}
      */
+    // TODO baseCount + counterCell
     public int size() {
         long n = sumCount();
         return ((n < 0L) ? 0 :
@@ -1032,7 +1033,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
         int hash = spread(key.hashCode());
         int binCount = 0;
         for (Node<K,V>[] tab = table;;) {
-            // TODO f代表tabled的索引节点，可能是链表的head或者红黑树的head
+            // TODO f代表table的索引节点，可能是链表的head或者红黑树的head
             // TODO n是table长度，i插入元素在table的索引下标，fh head节点key的hash值
             Node<K,V> f; int n, i, fh;
             if (tab == null || (n = tab.length) == 0)
@@ -1050,8 +1051,8 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                 // TODO 帮助数组扩容
                 tab = helpTransfer(tab, f);
             else {
+                // TODO 索引下标存在元素，且为普通Node节点，给head加锁后执行插入或更新
                 V oldVal = null;
-                // TODO 锁住table的某个下标节点（即锁住链表或者红黑树的头结点）
                 synchronized (f) {
                     if (tabAt(tab, i) == f) {
                         // TODO 普通链表节点
@@ -1068,7 +1069,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                                         e.val = value;
                                     break;
                                 }
-                                // TODO 添加到链表的尾部
+                                // TODO 添加到链表的尾部（与Java7中不同，加载首部）
                                 Node<K,V> pred = e;
                                 if ((e = e.next) == null) {
                                     pred.next = new Node<K,V>(hash, key,
@@ -1101,7 +1102,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                 }
             }
         }
-        // TODO 增加数量
+        // TODO 链表或红黑树节点最新数量添加到CounterCell中
         addCount(1L, binCount);
         return null;
     }
@@ -2195,7 +2196,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
     /**
      * A node inserted at head of bins during transfer operations.
      */
-    // TODO 在做转移操作时，插入的头节点
+    // TODO 在做转换红黑树操作时，插入的头节点(-1)
     static final class ForwardingNode<K,V> extends Node<K,V> {
         final Node<K,V>[] nextTable;
         ForwardingNode(Node<K,V>[] tab) {
@@ -2216,11 +2217,13 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                         ((ek = e.key) == k || (ek != null && k.equals(ek))))
                         return e;
                     if (eh < 0) {
+                        // TODO 如果在扩容中，并且该节点为头结点，则从扩容的table开始find
                         if (e instanceof ForwardingNode) {
                             tab = ((ForwardingNode<K,V>)e).nextTable;
                             continue outer;
                         }
                         else
+                            // TODO 从该节点开始查找
                             return e.find(h, k);
                     }
                     if ((e = e.next) == null)
@@ -2647,19 +2650,24 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      * Replaces all linked nodes in bin at given index unless table is
      * too small, in which case resizes instead.
      */
+    // TODO 数组长度小于MIN_TREEIFY_CAPACITY则扩容1倍
     private final void treeifyBin(Node<K,V>[] tab, int index) {
         Node<K,V> b; int n, sc;
         if (tab != null) {
             if ((n = tab.length) < MIN_TREEIFY_CAPACITY)
+                // TODO 扩容2倍
                 tryPresize(n << 1);
             else if ((b = tabAt(tab, index)) != null && b.hash >= 0) {
+                // TODO 锁住table的index下标对应的结点
                 synchronized (b) {
                     if (tabAt(tab, index) == b) {
+                        // TODO hd是头节点
                         TreeNode<K,V> hd = null, tl = null;
                         for (Node<K,V> e = b; e != null; e = e.next) {
                             TreeNode<K,V> p =
                                 new TreeNode<K,V>(e.hash, e.key, e.val,
                                                   null, null);
+                            // TODO p是首节点
                             if ((p.prev = tl) == null)
                                 hd = p;
                             else
