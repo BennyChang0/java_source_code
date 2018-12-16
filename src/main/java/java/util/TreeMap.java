@@ -579,6 +579,7 @@ public class TreeMap<K,V>
             parent.left = e;
         else
             parent.right = e;
+        // TODO 在插入数据后进行红黑树平衡处理
         fixAfterInsertion(e);
         size++;
         modCount++;
@@ -2255,17 +2256,34 @@ public class TreeMap<K,V>
 
     /** From CLR */
     private void fixAfterInsertion(Entry<K,V> x) {
+        // x节点为红色
         x.color = RED;
 
+        // TODO 父子节点不能同时为红色（但是可以同时为黑色）
         while (x != null && x != root && x.parent.color == RED) {
+
+            // TODO x的父节点为左子节点
             if (parentOf(x) == leftOf(parentOf(parentOf(x)))) {
+
+                // x父节点的父节点的右子节点 --> y
                 Entry<K,V> y = rightOf(parentOf(parentOf(x)));
+
+                // 如果y颜色为红色
                 if (colorOf(y) == RED) {
+
+                    // 将x的父节点变为黑色
                     setColor(parentOf(x), BLACK);
+
+                    // 将y变为黑色
                     setColor(y, BLACK);
+
+                    // 将x的父节点的父节点变为红色
                     setColor(parentOf(parentOf(x)), RED);
+
+                    // x的父节点的父节点赋值给x
                     x = parentOf(parentOf(x));
                 } else {
+                    // TODO 如果x为右子节点
                     if (x == rightOf(parentOf(x))) {
                         x = parentOf(x);
                         rotateLeft(x);
@@ -2275,11 +2293,22 @@ public class TreeMap<K,V>
                     rotateRight(parentOf(parentOf(x)));
                 }
             } else {
+                // TODO x的父节点为右子节点
+                // x的父节点的父节点的左子节点 --> y
                 Entry<K,V> y = leftOf(parentOf(parentOf(x)));
+
+                // 如果y的颜色为红色
                 if (colorOf(y) == RED) {
+                    // 设置x的父节点颜色为黑色
                     setColor(parentOf(x), BLACK);
+
+                    // y设置为黑色
                     setColor(y, BLACK);
+
+                    // 设置x的父节点的父节点为红色
                     setColor(parentOf(parentOf(x)), RED);
+
+                    // x的父节点的父节点赋值给x
                     x = parentOf(parentOf(x));
                 } else {
                     if (x == leftOf(parentOf(x))) {
@@ -2292,6 +2321,8 @@ public class TreeMap<K,V>
                 }
             }
         }
+
+        // 根节点必须是黑色
         root.color = BLACK;
     }
 
