@@ -2256,19 +2256,20 @@ public class TreeMap<K,V>
 
     /** From CLR */
     private void fixAfterInsertion(Entry<K,V> x) {
-        // x节点为红色
+        // 将当前的节点涂红
         x.color = RED;
 
         // TODO 父子节点不能同时为红色（但是可以同时为黑色）
+        // 如果当前节点不是根节点并且当前节点的父节点为红色
         while (x != null && x != root && x.parent.color == RED) {
 
             // TODO x的父节点为左子节点
             if (parentOf(x) == leftOf(parentOf(parentOf(x)))) {
 
-                // x父节点的父节点的右子节点 --> y
+                // 叔叔节点
                 Entry<K,V> y = rightOf(parentOf(parentOf(x)));
 
-                // 如果y颜色为红色
+                // 如果叔叔节点是红色
                 if (colorOf(y) == RED) {
 
                     // 将x的父节点变为黑色
@@ -2280,24 +2281,22 @@ public class TreeMap<K,V>
                     // 将x的父节点的父节点变为红色
                     setColor(parentOf(parentOf(x)), RED);
 
-                    // x的父节点的父节点赋值给x
+                    // 将当前节点指向祖父节点
                     x = parentOf(parentOf(x));
-                } else {
-                    // TODO 如果x为右子节点
-                    if (x == rightOf(parentOf(x))) {
-                        x = parentOf(x);
-                        rotateLeft(x);
+                } else {// 如果叔叔节点是黑色
+                    if (x == rightOf(parentOf(x))) {//x、x父节点、x的祖父节点，三个节点不在同一斜线上
+                        x = parentOf(x);// 当前节点指向父节点
+                        rotateLeft(x);// 当前节点左旋
                     }
                     setColor(parentOf(x), BLACK);
                     setColor(parentOf(parentOf(x)), RED);
                     rotateRight(parentOf(parentOf(x)));
                 }
-            } else {
-                // TODO x的父节点为右子节点
-                // x的父节点的父节点的左子节点 --> y
+            } else {// TODO x的父节点为右子节点
+                // 叔叔节点
                 Entry<K,V> y = leftOf(parentOf(parentOf(x)));
 
-                // 如果y的颜色为红色
+                // 如果叔叔节点为红色
                 if (colorOf(y) == RED) {
                     // 设置x的父节点颜色为黑色
                     setColor(parentOf(x), BLACK);
@@ -2308,12 +2307,12 @@ public class TreeMap<K,V>
                     // 设置x的父节点的父节点为红色
                     setColor(parentOf(parentOf(x)), RED);
 
-                    // x的父节点的父节点赋值给x
+                    // 将当前节点指向祖父节点
                     x = parentOf(parentOf(x));
-                } else {
-                    if (x == leftOf(parentOf(x))) {
-                        x = parentOf(x);
-                        rotateRight(x);
+                } else {// 如果叔叔节点是黑色
+                    if (x == leftOf(parentOf(x))) {//三个节点不在同一斜线上
+                        x = parentOf(x);// 当前节点指向父节点
+                        rotateRight(x);// 当前节点右旋
                     }
                     setColor(parentOf(x), BLACK);
                     setColor(parentOf(parentOf(x)), RED);
@@ -2335,16 +2334,20 @@ public class TreeMap<K,V>
 
         // If strictly internal, copy successor's element to p and then make p
         // point to successor.
+        // TODO 待删除节点有俩个子节点，
         if (p.left != null && p.right != null) {
             Entry<K,V> s = successor(p);
+            // 将后继节点的值覆盖掉待删除节点的值
             p.key = s.key;
             p.value = s.value;
-            p = s;
+            p = s;// 待删除节点指向后继节点
         } // p has 2 children
 
+        // 获取顶替待删除节点的节点
         // Start fixup at replacement node, if it exists.
         Entry<K,V> replacement = (p.left != null ? p.left : p.right);
 
+        // 如果待删除节点有一个子节点，则用子节点顶替待删除节点
         if (replacement != null) {
             // Link replacement to parent
             replacement.parent = p.parent;
